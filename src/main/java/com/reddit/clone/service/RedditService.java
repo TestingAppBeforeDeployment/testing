@@ -3,8 +3,10 @@ package com.reddit.clone.service;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -17,6 +19,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 @Service
 public class RedditService {
 
+    private static final String REDDIT_BASE_URL = "https://www.reddit.com";
     private static final int REDDIT_LISTING_LIMIT = 100;
     private static final int MAX_FETCHED_POSTS = 2000;
 
@@ -25,23 +28,39 @@ public class RedditService {
 
     private HttpEntity<String> buildEntity() {
         HttpHeaders headers = new HttpHeaders();
-        headers.set("User-Agent", "springboot-app");
+        // Reddit is stricter on cloud traffic; provide an explicit app-style user agent.
+        String configuredUserAgent = System.getenv("REDDIT_USER_AGENT");
+        String userAgent = (configuredUserAgent == null || configuredUserAgent.isBlank())
+            ? "web:reddit-clone:v1.0 (by /u/reddit_clone_user)"
+            : configuredUserAgent;
+        headers.set("User-Agent", userAgent);
+        headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
         return new HttpEntity<>(headers);
     }
 
     private String fetchUrl(String url) {
-        ResponseEntity<String> response = restTemplate.exchange(
-                url,
-                HttpMethod.GET,
-                buildEntity(),
-                String.class
-        );
-        return response.getBody() == null ? "{}" : response.getBody();
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    buildEntity(),
+                    String.class
+            );
+            return response.getBody() == null ? "{}" : response.getBody();
+        } catch (RestClientResponseException ex) {
+            String status = String.valueOf(ex.getStatusCode().value());
+            String body = ex.getResponseBodyAsString();
+            if (body != null && body.length() > 300) {
+                body = body.substring(0, 300);
+            }
+            throw new IllegalStateException("Reddit upstream error. status=" + status + ", body=" + body, ex);
+        }
     }
 
     public String getPost(String query) {
         String url = UriComponentsBuilder
-            .fromUriString("https://www.reddit.com/r/{query}.json")
+            .fromUriString(REDDIT_BASE_URL + "/r/{query}.json")
+                .queryParam("raw_json", 1)
                 .buildAndExpand(query)
                 .toUriString();
         return fetchUrl(url);
@@ -49,7 +68,8 @@ public class RedditService {
     
     public String getUser(String username) {
         String url = UriComponentsBuilder
-            .fromUriString("https://www.reddit.com/user/{username}/about.json")
+            .fromUriString(REDDIT_BASE_URL + "/user/{username}/about.json")
+                .queryParam("raw_json", 1)
                 .buildAndExpand(username)
                 .toUriString();
         return fetchUrl(url);
@@ -65,9 +85,10 @@ public class RedditService {
         try {
             while (collectedPosts.size() < MAX_FETCHED_POSTS) {
                 UriComponentsBuilder builder = UriComponentsBuilder
-                    .fromUriString("https://www.reddit.com/user/{username}/submitted.json")
+                    .fromUriString(REDDIT_BASE_URL + "/user/{username}/submitted.json")
                         .queryParam("limit", REDDIT_LISTING_LIMIT)
-                        .queryParam("sort", "new");
+                        .queryParam("sort", "new")
+                        .queryParam("raw_json", 1);
 
                 if (after != null && !after.isBlank()) {
                     builder.queryParam("after", after);
