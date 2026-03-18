@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reddit Media Console</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ["IBM Plex Sans", "Segoe UI", "ui-sans-serif", "system-ui", "sans-serif"]
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="min-h-screen bg-[#DAE0E6] font-sans text-slate-900">
+  <header class="sticky top-0 z-20 border-b border-orange-300 bg-white">
+    <div class="mx-auto flex max-w-7xl items-center gap-3 px-3 py-2 sm:px-4">
+      <div class="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500 text-xl font-bold text-white">R</div>
+      <h1 class="text-base font-semibold tracking-tight text-slate-800 sm:text-lg">Reddit Media Console</h1>
+      <span class="ml-auto rounded-full bg-orange-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-orange-700">Deploy Ready</span>
+    </div>
+  </header>
+
+  <main class="mx-auto grid w-full max-w-7xl gap-3 p-3 sm:gap-4 sm:p-4">
+    <section class="rounded-xl border border-slate-300 bg-white p-3 shadow-sm sm:p-4">
+      <div class="grid gap-3 md:grid-cols-[1fr_190px_120px]">
+        <div>
+          <label for="searchInput" class="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Search</label>
+          <input id="searchInput" type="text" value="spez" placeholder="subreddit or username" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none ring-orange-300 transition focus:ring-2" />
+        </div>
+
+        <div>
+          <label for="operationSelect" class="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Operation</label>
+          <select id="operationSelect" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none ring-orange-300 transition focus:ring-2">
+            <option value="user-posts" selected>User Post</option>
+            <option value="subreddit-posts">Load Post</option>
+            <option value="user-profile">Load Profile</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="pageSizeSelect" class="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500">Page Size</label>
+          <select id="pageSizeSelect" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none ring-orange-300 transition focus:ring-2">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mt-3 flex flex-wrap items-center gap-2">
+        <button id="loadBtn" class="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600">Load</button>
+        <button id="resetBtn" class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Reset</button>
+        <label for="baseUrlInput" class="ml-auto text-xs font-semibold uppercase tracking-wider text-slate-500">Backend</label>
+        <input id="baseUrlInput" type="text" value="" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs outline-none ring-orange-300 transition focus:ring-2 sm:w-[260px]" />
+      </div>
+    </section>
+
+    <section class="rounded-xl border border-slate-300 bg-white p-3 shadow-sm sm:p-4">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">Filters</span>
+        <button class="chip rounded-full border border-slate-300 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white" data-filter="all">All</button>
+        <button class="chip rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700" data-filter="image">Image</button>
+        <button class="chip rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700" data-filter="video">Video</button>
+        <button class="chip rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700" data-filter="post">Post</button>
+      </div>
+
+      <div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+        <button id="prevPageBtn" class="rounded-md border border-slate-300 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50">Prev</button>
+        <button id="nextPageBtn" class="rounded-md border border-slate-300 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50">Next</button>
+        <label for="jumpPageInput" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Jump</label>
+        <input id="jumpPageInput" type="number" min="1" value="1" class="w-20 rounded-md border border-slate-300 bg-slate-50 px-2 py-1.5 text-sm outline-none ring-orange-300 transition focus:ring-2" />
+        <button id="jumpPageBtn" class="rounded-md border border-slate-300 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50">Go</button>
+        <p id="pageInfo" class="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">Page 1 of 1</p>
+        <p id="status" class="ml-auto text-xs text-slate-600">Ready.</p>
+      </div>
+    </section>
+
+    <section class="grid gap-3 md:grid-cols-3">
+      <article id="imagePanel" class="rounded-xl border border-slate-300 bg-white p-3 shadow-sm">
+        <div class="mb-2 flex items-center justify-between">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Images</h2>
+          <span id="imageCount" class="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">0</span>
+        </div>
+        <div id="imageFeed" class="grid max-h-[68vh] gap-3 overflow-auto pr-1"></div>
+      </article>
+
+      <article id="videoPanel" class="rounded-xl border border-slate-300 bg-white p-3 shadow-sm">
+        <div class="mb-2 flex items-center justify-between">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Videos</h2>
+          <span id="videoCount" class="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">0</span>
+        </div>
+        <div id="videoFeed" class="grid max-h-[68vh] gap-3 overflow-auto pr-1"></div>
+      </article>
+
+      <article id="postPanel" class="rounded-xl border border-slate-300 bg-white p-3 shadow-sm">
+        <div class="mb-2 flex items-center justify-between">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Posts</h2>
+          <span id="postCount" class="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">0</span>
+        </div>
+        <div id="postFeed" class="grid max-h-[68vh] gap-3 overflow-auto pr-1"></div>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const BASE_URL_STORAGE_KEY = "reddit_media_console_base_url";
+
+    const state = {
+      filter: "all",
+      operation: "user-posts",
+      query: "spez",
+      page: 1,
+      totalPages: 1,
+      pageSize: 20,
+      baseUrl: "",
+      images: [],
+      videos: [],
+      posts: []
+    };
+
+    const refs = {
+      searchInput: document.getElementById("searchInput"),
+      operationSelect: document.getElementById("operationSelect"),
+      pageSizeSelect: document.getElementById("pageSizeSelect"),
+      loadBtn: document.getElementById("loadBtn"),
+      resetBtn: document.getElementById("resetBtn"),
+      baseUrlInput: document.getElementById("baseUrlInput"),
+      prevPageBtn: document.getElementById("prevPageBtn"),
+      nextPageBtn: document.getElementById("nextPageBtn"),
+      jumpPageInput: document.getElementById("jumpPageInput"),
+      jumpPageBtn: document.getElementById("jumpPageBtn"),
+      pageInfo: document.getElementById("pageInfo"),
+      status: document.getElementById("status"),
+      chips: Array.from(document.querySelectorAll(".chip")),
+      imagePanel: document.getElementById("imagePanel"),
+      videoPanel: document.getElementById("videoPanel"),
+      postPanel: document.getElementById("postPanel"),
+      imageFeed: document.getElementById("imageFeed"),
+      videoFeed: document.getElementById("videoFeed"),
+      postFeed: document.getElementById("postFeed"),
+      imageCount: document.getElementById("imageCount"),
+      videoCount: document.getElementById("videoCount"),
+      postCount: document.getElementById("postCount")
+    };
+
+    function setStatus(message, isError = false) {
+      refs.status.textContent = message;
+      refs.status.className = isError ? "ml-auto text-xs text-rose-700" : "ml-auto text-xs text-slate-600";
+    }
+
+    function getDefaultBaseUrl() {
+      const current = window.location.origin;
+      if (current && current.startsWith("http")) {
+        return current;
+      }
+      return "http://localhost:8080";
+    }
+
+    function initializeBaseUrl() {
+      const stored = localStorage.getItem(BASE_URL_STORAGE_KEY);
+      const base = (stored && stored.startsWith("http")) ? stored : getDefaultBaseUrl();
+      state.baseUrl = base.replace(/\/$/, "");
+      refs.baseUrlInput.value = state.baseUrl;
+    }
+
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function normalizeUrl(url) {
+      return url
+        .replace(/&amp;/g, "&")
+        .replace(/[),.;!?]+$/g, "");
+    }
+
+    function isVideoUrl(url) {
+      return /\.(mp4|webm|ogg|mov|m4v|m3u8)(\?|$)/i.test(url)
+        || /\/v\.redd\.it\//i.test(url)
+        || /dash_|hlsplaylist|\/video\//i.test(url)
+        || /[?&](format|mime)=video/i.test(url);
+    }
+
+    function isImageUrl(url) {
+      return /\.(png|jpe?g|gif|webp|bmp|svg)(\?|$)/i.test(url)
+        || /\/i\.redd\.it\//i.test(url)
+        || /\/preview\.redd\.it\//i.test(url);
+    }
+
+    function extractTextFromPost(post) {
+      const candidates = [post.title, post.selftext, post.body, post.description, post.public_description].filter(Boolean);
+      return candidates
+        .map((v) => String(v).replace(/https?:\/\/[^\s"'<>]+/g, " ").replace(/\s+/g, " ").trim())
+        .filter((v) => v.length >= 20);
+    }
+
+    function getPostId(post) {
+      return String(post.id || post.name || post.permalink || post.url || Math.random());
+    }
+
+    function extractCandidateUrls(post) {
+      const urls = [];
+
+      const pushIfString = (value) => {
+        if (typeof value === "string" && value.startsWith("http")) {
+          urls.push(normalizeUrl(value));
+        }
+      };
+
+      pushIfString(post.url);
+      pushIfString(post.url_overridden_by_dest);
+
+      const redditVideo = post?.secure_media?.reddit_video;
+      if (redditVideo) {
+        pushIfString(redditVideo.fallback_url);
+        pushIfString(redditVideo.hls_url);
+        pushIfString(redditVideo.dash_url);
+      }
+
+      const previewImages = post?.preview?.images;
+      if (Array.isArray(previewImages)) {
+        previewImages.forEach((img) => {
+          pushIfString(img?.source?.url);
+        });
+      }
+
+      if (post.media_metadata && typeof post.media_metadata === "object") {
+        Object.values(post.media_metadata).forEach((meta) => {
+          pushIfString(meta?.s?.u);
+        });
+      }
+
+      return [...new Set(urls.filter(Boolean))];
+    }
+
+    function getVideoGroupKey(url) {
+      const cleaned = url.split("?")[0];
+      return cleaned
+        .replace(/\/DASH_\d+\.mp4$/i, "/DASH")
+        .replace(/\/DASH_AUDIO_\d+\.(mp4|m4a)$/i, "/DASH_AUDIO")
+        .replace(/\/HLSPlaylist\.m3u8$/i, "/HLS")
+        .replace(/\/DASHPlaylist\.mpd$/i, "/MPD");
+    }
+
+    function videoScore(url) {
+      const lower = url.toLowerCase();
+      const dashMatch = lower.match(/dash_(\d+)\.mp4/);
+      const dashQuality = dashMatch ? Number(dashMatch[1]) : 0;
+      const extensionBonus = lower.includes(".mp4") ? 10000 : 0;
+      const protocolPenalty = (lower.includes(".m3u8") || lower.includes(".mpd")) ? -5000 : 0;
+      return extensionBonus + dashQuality + protocolPenalty;
+    }
+
+    function chooseBestVideoUrl(urls) {
+      const videoUrls = urls.filter((url) => isVideoUrl(url));
+      if (videoUrls.length === 0) {
+        return null;
+      }
+
+      const bestByGroup = new Map();
+      videoUrls.forEach((url) => {
+        const key = getVideoGroupKey(url);
+        const current = bestByGroup.get(key);
+        if (!current || videoScore(url) > videoScore(current)) {
+          bestByGroup.set(key, url);
+        }
+      });
+
+      return [...bestByGroup.values()].sort((a, b) => videoScore(b) - videoScore(a))[0];
+    }
+
+    function chooseBestImageUrl(urls) {
+      const imageUrls = urls.filter((url) => isImageUrl(url));
+      if (imageUrls.length === 0) {
+        return null;
+      }
+
+      const scored = imageUrls.map((url) => {
+        const dimensionMatch = url.match(/(\d{2,5})x(\d{2,5})/i);
+        const area = dimensionMatch ? Number(dimensionMatch[1]) * Number(dimensionMatch[2]) : 0;
+        const sourceBonus = /\/source\//i.test(url) ? 1000000 : 0;
+        return { url, score: sourceBonus + area + (url.length > 40 ? 100 : 0) };
+      });
+
+      scored.sort((a, b) => b.score - a.score);
+      return scored[0].url;
+    }
+
+    function extractPostObjects(nodes) {
+      const posts = [];
+
+      function walk(node) {
+        if (!node) {
+          return;
+        }
+
+        if (Array.isArray(node)) {
+          node.forEach(walk);
+          return;
+        }
+
+        if (typeof node !== "object") {
+          return;
+        }
+
+        if (node.kind === "t3" && node.data && typeof node.data === "object") {
+          posts.push(node.data);
+          return;
+        }
+
+        if (node.id && (node.title || node.selftext || node.url || node.url_overridden_by_dest || node.permalink)) {
+          posts.push(node);
+        }
+
+        Object.values(node).forEach(walk);
+      }
+
+      nodes.forEach(walk);
+      return posts;
+    }
+
+    function parseFromNodes(nodes) {
+      const posts = [];
+      const images = [];
+      const videos = [];
+
+      const postObjects = extractPostObjects(nodes);
+      const seenPostIds = new Set();
+
+      postObjects.forEach((post) => {
+        const postId = getPostId(post);
+        if (seenPostIds.has(postId)) {
+          return;
+        }
+        seenPostIds.add(postId);
+
+        posts.push(...extractTextFromPost(post));
+
+        const candidates = extractCandidateUrls(post);
+        const bestVideo = chooseBestVideoUrl(candidates);
+        if (bestVideo) {
+          videos.push(bestVideo);
+          return;
+        }
+
+        const bestImage = chooseBestImageUrl(candidates);
+        if (bestImage) {
+          images.push(bestImage);
+        }
+      });
+
+      return {
+        images: [...new Set(images)],
+        videos: [...new Set(videos)],
+        posts: [...new Set(posts)]
+      };
+    }
+
+    function renderList(feed, htmlWhenEmpty, items, factory) {
+      feed.innerHTML = "";
+      if (items.length === 0) {
+        feed.innerHTML = htmlWhenEmpty;
+        return;
+      }
+
+      items.forEach((item) => feed.appendChild(factory(item)));
+    }
+
+    function renderFeeds() {
+      renderList(
+        refs.imageFeed,
+        '<p class="rounded-lg border border-dashed border-slate-300 p-3 text-sm text-slate-500">No images on this page.</p>',
+        state.images,
+        (url) => {
+          const node = document.createElement("article");
+          node.className = "overflow-hidden rounded-lg border border-slate-200 bg-slate-50";
+          node.innerHTML = `<img src="${url}" loading="lazy" alt="image" class="h-44 w-full object-cover" /><p class="truncate px-2 py-1 text-xs text-slate-600">${url}</p>`;
+          return node;
+        }
+      );
+
+      renderList(
+        refs.videoFeed,
+        '<p class="rounded-lg border border-dashed border-slate-300 p-3 text-sm text-slate-500">No videos on this page.</p>',
+        state.videos,
+        (url) => {
+          const node = document.createElement("article");
+          node.className = "overflow-hidden rounded-lg border border-slate-200 bg-slate-50";
+          node.innerHTML = `<video src="${url}" controls preload="metadata" class="h-44 w-full bg-black object-cover"></video><p class="truncate px-2 py-1 text-xs text-slate-600">${url}</p>`;
+          return node;
+        }
+      );
+
+      renderList(
+        refs.postFeed,
+        '<p class="rounded-lg border border-dashed border-slate-300 p-3 text-sm text-slate-500">No text posts on this page.</p>',
+        state.posts,
+        (text) => {
+          const node = document.createElement("article");
+          node.className = "rounded-lg border border-slate-200 bg-slate-50 p-3";
+          node.innerHTML = `<p class="text-sm leading-relaxed text-slate-700">${escapeHtml(text)}</p>`;
+          return node;
+        }
+      );
+
+      refs.imageCount.textContent = String(state.images.length);
+      refs.videoCount.textContent = String(state.videos.length);
+      refs.postCount.textContent = String(state.posts.length);
+      refs.pageInfo.textContent = `Page ${state.page} of ${state.totalPages}`;
+      refs.jumpPageInput.value = String(state.page);
+      refs.jumpPageInput.max = String(state.totalPages);
+
+      const canPaginate = state.operation === "user-posts";
+      refs.prevPageBtn.disabled = state.page <= 1 || !canPaginate;
+      refs.nextPageBtn.disabled = state.page >= state.totalPages || !canPaginate;
+      refs.jumpPageInput.disabled = !canPaginate;
+      refs.jumpPageBtn.disabled = !canPaginate;
+      refs.prevPageBtn.classList.toggle("opacity-40", refs.prevPageBtn.disabled);
+      refs.nextPageBtn.classList.toggle("opacity-40", refs.nextPageBtn.disabled);
+      refs.jumpPageInput.classList.toggle("opacity-50", refs.jumpPageInput.disabled);
+      refs.jumpPageBtn.classList.toggle("opacity-40", refs.jumpPageBtn.disabled);
+
+      applyFilter(state.filter);
+    }
+
+    function applyFilter(filter) {
+      state.filter = filter;
+
+      refs.imagePanel.classList.toggle("hidden", !(filter === "all" || filter === "image"));
+      refs.videoPanel.classList.toggle("hidden", !(filter === "all" || filter === "video"));
+      refs.postPanel.classList.toggle("hidden", !(filter === "all" || filter === "post"));
+
+      refs.chips.forEach((chip) => {
+        const active = chip.dataset.filter === filter;
+        chip.className = active
+          ? "chip rounded-full border border-slate-300 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white"
+          : "chip rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700";
+      });
+    }
+
+    async function loadData() {
+      state.query = refs.searchInput.value.trim();
+      state.operation = refs.operationSelect.value;
+      state.pageSize = Number(refs.pageSizeSelect.value);
+      state.baseUrl = refs.baseUrlInput.value.trim().replace(/\/$/, "");
+
+      if (!state.baseUrl.startsWith("http")) {
+        setStatus("Backend URL must start with http:// or https://", true);
+        return;
+      }
+      localStorage.setItem(BASE_URL_STORAGE_KEY, state.baseUrl);
+
+      if (!state.query) {
+        setStatus("Search input is required.", true);
+        return;
+      }
+
+      let endpoint = "";
+      if (state.operation === "subreddit-posts") {
+        endpoint = `/reddit/${encodeURIComponent(state.query)}`;
+      } else if (state.operation === "user-profile") {
+        endpoint = `/reddit/user/${encodeURIComponent(state.query)}`;
+      } else {
+        endpoint = `/reddit/user/${encodeURIComponent(state.query)}/post?page=${state.page}&size=${state.pageSize}`;
+      }
+
+      setStatus("Loading data...");
+
+      try {
+        const response = await fetch(`${state.baseUrl}${endpoint}`);
+        const body = await response.text();
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        let parsed;
+        try {
+          parsed = JSON.parse(body);
+        } catch {
+          parsed = body;
+        }
+
+        if (state.operation === "user-posts" && parsed && typeof parsed === "object") {
+          state.totalPages = Number(parsed.totalPages) > 0 ? Number(parsed.totalPages) : 1;
+          state.page = Number(parsed.page) > 0 ? Number(parsed.page) : state.page;
+          const items = Array.isArray(parsed.items) ? parsed.items : [];
+          const result = parseFromNodes(items);
+          state.images = result.images;
+          state.videos = result.videos;
+          state.posts = result.posts;
+          setStatus(`Loaded ${items.length} user posts from page ${state.page}.`);
+        } else {
+          state.totalPages = 1;
+          state.page = 1;
+          const nodes = Array.isArray(parsed) ? parsed : [parsed];
+          const result = parseFromNodes(nodes);
+          state.images = result.images;
+          state.videos = result.videos;
+          state.posts = result.posts;
+          setStatus("Loaded dataset successfully.");
+        }
+
+        renderFeeds();
+      } catch (error) {
+        state.images = [];
+        state.videos = [];
+        state.posts = [];
+        state.totalPages = 1;
+        state.page = 1;
+        renderFeeds();
+        setStatus("Failed to load data. Check backend URL, endpoint, and CORS.", true);
+      }
+    }
+
+    function resetAll() {
+      state.filter = "all";
+      state.page = 1;
+      state.totalPages = 1;
+      state.images = [];
+      state.videos = [];
+      state.posts = [];
+      refs.searchInput.value = "";
+      refs.operationSelect.value = "user-posts";
+      refs.pageSizeSelect.value = "20";
+      state.baseUrl = getDefaultBaseUrl();
+      refs.baseUrlInput.value = state.baseUrl;
+      localStorage.setItem(BASE_URL_STORAGE_KEY, state.baseUrl);
+      refs.jumpPageInput.value = "1";
+      setStatus("Reset complete.");
+      renderFeeds();
+    }
+
+    function jumpToPage() {
+      if (state.operation !== "user-posts") {
+        return;
+      }
+
+      const targetPage = Number(refs.jumpPageInput.value);
+      if (!Number.isInteger(targetPage) || targetPage < 1) {
+        setStatus("Enter a valid page number (1 or more).", true);
+        return;
+      }
+
+      const boundedPage = Math.min(targetPage, state.totalPages);
+      state.page = boundedPage;
+      loadData();
+    }
+
+    refs.loadBtn.addEventListener("click", () => {
+      state.page = 1;
+      loadData();
+    });
+
+    refs.resetBtn.addEventListener("click", resetAll);
+
+    refs.prevPageBtn.addEventListener("click", () => {
+      if (state.operation !== "user-posts" || state.page <= 1) {
+        return;
+      }
+      state.page -= 1;
+      loadData();
+    });
+
+    refs.nextPageBtn.addEventListener("click", () => {
+      if (state.operation !== "user-posts" || state.page >= state.totalPages) {
+        return;
+      }
+      state.page += 1;
+      loadData();
+    });
+
+    refs.jumpPageBtn.addEventListener("click", jumpToPage);
+
+    refs.jumpPageInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        jumpToPage();
+      }
+    });
+
+    refs.operationSelect.addEventListener("change", () => {
+      const isUserPosts = refs.operationSelect.value === "user-posts";
+      refs.pageSizeSelect.disabled = !isUserPosts;
+      if (!isUserPosts) {
+        state.page = 1;
+        state.totalPages = 1;
+      }
+      renderFeeds();
+    });
+
+    refs.chips.forEach((chip) => {
+      chip.addEventListener("click", () => applyFilter(chip.dataset.filter));
+    });
+
+    refs.searchInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        state.page = 1;
+        loadData();
+      }
+    });
+
+    initializeBaseUrl();
+    refs.pageSizeSelect.disabled = false;
+    applyFilter("all");
+    renderFeeds();
+  </script>
+</body>
+</html>
